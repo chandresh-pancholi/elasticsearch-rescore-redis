@@ -1,7 +1,5 @@
 package com.bigdataboutique.elasticsearch.plugin;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -24,7 +22,9 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.search.rescore.RescoreContext;
 import org.elasticsearch.search.rescore.Rescorer;
 import org.elasticsearch.search.rescore.RescorerBuilder;
-import redis.clients.jedis.Jedis;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.JedisCluster;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -40,14 +40,14 @@ import static org.elasticsearch.common.xcontent.ConstructingObjectParser.optiona
 public class RedisRescoreBuilder extends RescorerBuilder<RedisRescoreBuilder> {
     public static final String NAME = "redis";
 
-    protected static final Logger log = LogManager.getLogger(RedisRescoreBuilder.class);
+    protected static final Logger log = LoggerFactory.getLogger(RedisRescoreBuilder.class.getName());
 
     private final String keyField;
     private final String keyPrefix;
 
-    private static Jedis jedis;
-    public static void setJedis(Jedis j) {
-        jedis = j;
+    private static JedisCluster jedisCluster;
+    public static void setJedis(JedisCluster j) {
+        jedisCluster = j;
     }
 
     public RedisRescoreBuilder(final String keyField, @Nullable String keyPrefix) {
@@ -99,6 +99,8 @@ public class RedisRescoreBuilder extends RescorerBuilder<RedisRescoreBuilder> {
 
     @Override
     public RescoreContext innerBuildContext(int windowSize, QueryShardContext context) throws IOException {
+        log.info("window size ==> {} key field ===> {} ", windowSize, this.keyField);
+        log.info("field mapper ===> {} ", context.fieldMapper(this.keyField));
         IndexFieldData<?> keyField =
                 this.keyField == null ? null : context.getForField(context.fieldMapper(this.keyField));
         return new RedisRescoreContext(windowSize, keyPrefix, keyField);
@@ -256,7 +258,7 @@ public class RedisRescoreBuilder extends RescorerBuilder<RedisRescoreBuilder> {
 
             return AccessController.doPrivileged((PrivilegedAction<Float>) () -> {
                 final String fullKey = fullKey(key, keyPrefix);
-                final String factor = jedis.get(fullKey);
+                final String factor = jedisCluster.get(fullKey);
                 if (factor == null) {
                     log.debug("Redis rescore factor null for key " + keyPrefix + key);
                     return 1.0f;

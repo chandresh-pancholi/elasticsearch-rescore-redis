@@ -1,18 +1,20 @@
 
 package com.bigdataboutique.elasticsearch.plugin;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Setting.Property;
 import org.elasticsearch.common.settings.Settings;
 
-import java.net.URI;
 /**
  * {@link Config} contains the settings values and their static declarations.
  */
 public class Config {
-    static final Setting<String> REDIS_URL = new Setting<String>("redisRescore.redisUrl", "localhost", v -> {
+    protected static final Logger log = LogManager.getLogger(RedisRescoreBuilder.class);
+
+    static final Setting<String> REDIS_URL = new Setting<String>("redisRescore.redisUrl", "", v -> {
         try {
-            new URI(v);
             return v;
         } catch (Exception e) {
             throw new IllegalArgumentException("Setting is not a valid URI");
@@ -26,6 +28,7 @@ public class Config {
     }
 
     public String getRedisUrl() {
+        log.info("redisUrl ==> {} ", redisUrl);
         return redisUrl;
     }
 }
